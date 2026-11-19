@@ -357,16 +357,16 @@
     if (fixed) return R(fixed[0], fixed[1]);
     return R('green', '연중 시기');
   }
-  function upcomingSunday(from) { const t = ymd(from.getFullYear(), from.getMonth() + 1, from.getDate()); return addDays(t, (7 - t.getDay()) % 7); }
+  // 강조색 = 페이지를 연 날짜의 전례색
   function applyLiturgicalAccent() {
-    const sun = upcomingSunday(new Date());
-    const lit = liturgical(sun), c = LIT_COLORS[lit.color];
+    const now = new Date();
+    const lit = liturgical(now), c = LIT_COLORS[lit.color];
     const s = document.documentElement.style;
     s.setProperty('--lit-light', c.light); s.setProperty('--lit-on-light', c.onLight);
     s.setProperty('--lit-dark', c.dark); s.setProperty('--lit-on-dark', c.onDark);
     $('litdayDot').style.background = 'var(--accent)';
-    const isToday = same(sun, ymd(new Date().getFullYear(), new Date().getMonth() + 1, new Date().getDate()));
-    $('litdayText').textContent = `${isToday ? '오늘' : '이번'} 주일 ${sun.getMonth() + 1}월 ${sun.getDate()}일 · ${lit.name} · ${c.name}`;
+    const wd = ['일', '월', '화', '수', '목', '금', '토'][now.getDay()];
+    $('litdayText').textContent = `오늘 ${now.getMonth() + 1}월 ${now.getDate()}일 (${wd}) · ${lit.name} · ${c.name}`;
     show('litday', true);
   }
   function litDotFor(year, label) {   // '12월 06일' → 색 점
