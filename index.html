@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <meta name="color-scheme" content="light dark">
+  <script>/* 저장된 테마를 그리기 전에 적용 (깜빡임 방지) */
+    try { var t = localStorage.getItem('amsa-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
   <title>주일미사 봉사자 배정</title>
   <script src="https://accounts.google.com/gsi/client" async></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js" defer></script>
@@ -22,12 +25,27 @@
       --title-font: 'DNFBitBitv2', 'NeoDunggeunmo', 'Malgun Gothic', sans-serif;
       --body-font: 'NeoDunggeunmo', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
     }
+    /* 테마: 시스템(기본값, OS 설정 따라감) / 기본(라이트) / 다크 — html[data-theme] */
     @media (prefers-color-scheme: dark) {
-      :root {
+      :root:not([data-theme="light"]) {
         --bg: #16161a; --surface: #222228; --card: #2e2e35; --ink: #e4e4e7; --sub: #a1a1aa;
         --accent: #3d9bff; --on-accent: #0b0b0e; --hit: #6b5714; --union: #2a2a30; --error: #ff6b6b; --warn: #f0b45a;
       }
     }
+    :root[data-theme="dark"] {
+      --bg: #16161a; --surface: #222228; --card: #2e2e35; --ink: #e4e4e7; --sub: #a1a1aa;
+      --accent: #3d9bff; --on-accent: #0b0b0e; --hit: #6b5714; --union: #2a2a30; --error: #ff6b6b; --warn: #f0b45a;
+    }
+    :root[data-theme="light"] { color-scheme: light; }
+    :root[data-theme="dark"] { color-scheme: dark; }
+
+    /* 테마 선택 버튼 */
+    .themebar { width: 100%; display: flex; justify-content: flex-end; margin: -16px 0 16px; }
+    .seg { display: inline-flex; border: 2px solid var(--ink); border-radius: 5px; box-shadow: 3px 3px var(--ink); overflow: hidden; }
+    .seg button { border: 0; border-left: 2px solid var(--ink); background: var(--surface); color: var(--ink);
+      font: inherit; font-size: 13px; padding: 4px 10px; cursor: pointer; }
+    .seg button:first-child { border-left: 0; }
+    .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
     * { box-sizing: border-box; }
     [hidden] { display: none !important; }
     html { background: var(--bg); }
@@ -132,6 +150,13 @@
 </head>
 <body>
 <main>
+  <div class="themebar">
+    <div class="seg" role="group" aria-label="화면 테마">
+      <button type="button" data-theme-choice="system">시스템</button>
+      <button type="button" data-theme-choice="light">기본</button>
+      <button type="button" data-theme-choice="dark">다크</button>
+    </div>
+  </div>
   <h1 class="title">주일미사 봉사자 배정</h1>
   <p class="sub">매월 마지막 주일은 연합미사</p>
 
@@ -219,7 +244,7 @@
     </div>
   </section>
 
-  <p class="foot"><a href="privacy.html">개인정보처리방침</a></p>
+  <p class="foot">v1.0 · <a href="privacy.html">개인정보처리방침</a></p>
 </main>
 
 <script>
@@ -231,7 +256,25 @@
   const $ = id => document.getElementById(id);
   const show = (id, on) => { $(id).hidden = !on; };
   const dark = matchMedia('(prefers-color-scheme: dark)');
+
+  // ───── 테마 (시스템 / 기본 / 다크) ─────
+  const THEME_KEY = 'amsa-theme';
+  function savedTheme() { try { return localStorage.getItem(THEME_KEY) || 'system'; } catch (e) { return 'system'; } }
+  function isDarkNow() { const t = document.documentElement.dataset.theme; return t ? t === 'dark' : dark.matches; }
+  function applyTheme(choice) {
+    if (choice === 'light' || choice === 'dark') document.documentElement.dataset.theme = choice;
+    else delete document.documentElement.dataset.theme;
+    document.querySelectorAll('[data-theme-choice]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themeChoice === choice)));
+    if (window.google && google.accounts && !token) renderGoogleButton();
+  }
+  document.querySelectorAll('[data-theme-choice]').forEach(b => {
+    b.onclick = () => {
+      try { localStorage.setItem(THEME_KEY, b.dataset.themeChoice); } catch (e) { /* 저장 불가 시 이번 방문에만 적용 */ }
+      applyTheme(b.dataset.themeChoice);
+    };
+  });
   let token = null, me = null, headers = ['날짜', '해설', '독서1', '독서2', '보편 1,2', '보편 3,4'], current = null, months = [];
+  applyTheme(savedTheme());
 
   function setMsg(id, text, isError) { $(id).textContent = text || ''; $(id).className = 'msg' + (isError ? ' error' : ''); }
   function monthLabel(m) { const [y, mm] = m.split('-'); return `${y}년 ${Number(mm)}월`; }
@@ -258,7 +301,7 @@
   function renderGoogleButton() {
     $('gbtn').innerHTML = '';
     google.accounts.id.renderButton($('gbtn'), {
-      theme: dark.matches ? 'filled_black' : 'outline', size: 'large', text: 'continue_with', locale: 'ko', width: 260,
+      theme: isDarkNow() ? 'filled_black' : 'outline', size: 'large', text: 'continue_with', locale: 'ko', width: 260,
     });
   }
 
@@ -549,7 +592,7 @@
     });
     renderGoogleButton();
     google.accounts.id.prompt();
-    dark.addEventListener('change', () => { if (!token) renderGoogleButton(); });
+    dark.addEventListener('change', () => { if (!token && savedTheme() === 'system') renderGoogleButton(); });
   });
 </script>
 </body>
