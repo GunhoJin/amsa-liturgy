@@ -161,6 +161,17 @@
     .foot { margin-top: 32px; font-size: 13px; color: var(--sub); text-align: center; }
     .foot a { color: var(--accent); }
 
+    /* 카카오톡 인앱 브라우저 외부 열기 안내 */
+    .external-browser-guide {
+      width: 100%; max-width: 600px; margin: 0 auto 22px; padding: 14px 16px;
+      display: flex; flex-direction: column; align-items: center; gap: 9px;
+      text-align: center; background: var(--surface); color: var(--ink);
+      border: 2px solid var(--ink); border-radius: 5px; box-shadow: 4px 4px var(--ink);
+    }
+    .external-browser-guide p { margin: 0; color: var(--sub); font-size: 14px; }
+    .external-browser-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+    .external-browser-guide small { color: var(--sub); font-size: 12px; }
+
     @media (max-width: 520px) {
       main { padding-top: 28px; }
       .panel { padding: 14px 12px; }
@@ -174,6 +185,17 @@
 </head>
 <body>
 <main>
+  <!-- 카카오톡 인앱 브라우저에서만 표시 -->
+  <section class="external-browser-guide" id="external-browser-guide" hidden
+    aria-labelledby="external-browser-title" aria-describedby="external-browser-description">
+    <strong id="external-browser-title">기본 브라우저에서 열기</strong>
+    <p id="external-browser-description">Google 계정 로그인을 위해 Safari 또는 Chrome 등 외부 브라우저 이용을 권장합니다.</p>
+    <div class="external-browser-actions">
+      <button type="button" class="btn primary small" id="open-external-browser">외부 브라우저에서 열기</button>
+      <button type="button" class="btn small" id="copy-external-url">주소 복사</button>
+    </div>
+    <small id="external-browser-help" role="status">자동으로 전환되지 않으면 위 버튼을 누르거나 카카오톡 메뉴에서 다른 브라우저로 열어 주세요.</small>
+  </section>
   <div class="themebar">
     <div class="seg" role="group" aria-label="화면 테마">
       <button type="button" data-theme-choice="system">시스템</button>
@@ -314,6 +336,70 @@
   const $ = id => document.getElementById(id);
   const show = (id, on) => { $(id).hidden = !on; };
   const dark = matchMedia('(prefers-color-scheme: dark)');
+
+  // ───── 카카오톡 인앱 브라우저: 외부 브라우저 전환 안내 ─────
+  (function setupKakaoExternalBrowser() {
+    const ua = navigator.userAgent || '';
+    const isKakao = /KAKAOTALK/i.test(ua);
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(ua) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (!isKakao || !isMobile) return;
+
+    const guide = $('external-browser-guide');
+    const openButton = $('open-external-browser');
+    const copyButton = $('copy-external-url');
+    const help = $('external-browser-help');
+    if (!guide || !openButton || !copyButton || !help) return;
+
+    guide.hidden = false;
+    help.textContent = /Android/i.test(ua)
+      ? '전환되지 않으면 카카오톡 오른쪽 아래 메뉴에서 “다른 브라우저로 열기”를 선택해 주세요.'
+      : '전환되지 않으면 카카오톡 상단의 주소 또는 메뉴를 눌러 “다른 브라우저로 열기”를 선택해 주세요.';
+
+    const targetUrl = window.location.href;
+    const externalUrl = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(targetUrl);
+
+    function openExternalBrowser() {
+      // 카카오톡의 비공개 URL scheme입니다. 앱 버전·OS 정책에 따라 동작하지 않을 수 있습니다.
+      window.location.href = externalUrl;
+    }
+
+    openButton.addEventListener('click', openExternalBrowser);
+    copyButton.addEventListener('click', async () => {
+      let copied = false;
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(targetUrl);
+          copied = true;
+        }
+      } catch (e) {
+        // 아래 호환 방식으로 재시도
+      }
+      if (!copied) {
+        const field = document.createElement('textarea');
+        field.value = targetUrl;
+        field.setAttribute('readonly', '');
+        field.style.position = 'fixed';
+        field.style.opacity = '0';
+        document.body.appendChild(field);
+        field.select();
+        try { copied = document.execCommand('copy'); } catch (e) { copied = false; }
+        field.remove();
+      }
+      copyButton.textContent = copied ? '주소 복사 완료' : '주소를 길게 눌러 복사해 주세요';
+    });
+
+    // 한 탭에서 자동 전환은 한 번만 시도해 무한 리다이렉트를 방지합니다.
+    const attemptKey = 'amsa-liturgy-kakao-external-attempted-v1';
+    try {
+      if (!sessionStorage.getItem(attemptKey)) {
+        sessionStorage.setItem(attemptKey, '1');
+        window.setTimeout(openExternalBrowser, 700);
+      }
+    } catch (e) {
+      // 저장소 접근이 차단된 경우 자동 실행은 생략하고 수동 버튼만 제공합니다.
+    }
+  })();
 
   // ───── 테마 (시스템 / 기본 / 다크) ─────
   const THEME_KEY = 'amsa-theme';
