@@ -21,7 +21,9 @@
     /* 스타일 참고: Uiverse.io (andrew-demchenk0) */
     :root {
       --bg: #f4f4f0; --surface: #ffffff; --card: #d3d3d3; --ink: #323232; --sub: #666666;
-      --accent: #2d8cf0; --on-accent: #ffffff; --hit: #ffe066; --union: #eaeaea; --error: #d63031; --warn: #a15c00;
+      /* 강조색 = 다가오는 주일의 전례색 (스크립트가 --lit-* 를 채움, 없으면 녹색) */
+      --accent: var(--lit-light, #2f9e5b); --on-accent: var(--lit-on-light, #ffffff);
+      --hit: #ffe066; --union: #eaeaea; --error: #d63031; --warn: #a15c00;
       --title-font: 'DNFBitBitv2', 'NeoDunggeunmo', 'Malgun Gothic', sans-serif;
       --body-font: 'NeoDunggeunmo', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
     }
@@ -29,15 +31,20 @@
     @media (prefers-color-scheme: dark) {
       :root:not([data-theme="light"]) {
         --bg: #16161a; --surface: #222228; --card: #2e2e35; --ink: #e4e4e7; --sub: #a1a1aa;
-        --accent: #3d9bff; --on-accent: #0b0b0e; --hit: #6b5714; --union: #2a2a30; --error: #ff6b6b; --warn: #f0b45a;
+        --accent: var(--lit-dark, #4fd18a); --on-accent: var(--lit-on-dark, #0b0b0e); --hit: #6b5714; --union: #2a2a30; --error: #ff6b6b; --warn: #f0b45a;
       }
     }
     :root[data-theme="dark"] {
       --bg: #16161a; --surface: #222228; --card: #2e2e35; --ink: #e4e4e7; --sub: #a1a1aa;
-      --accent: #3d9bff; --on-accent: #0b0b0e; --hit: #6b5714; --union: #2a2a30; --error: #ff6b6b; --warn: #f0b45a;
+      --accent: var(--lit-dark, #4fd18a); --on-accent: var(--lit-on-dark, #0b0b0e); --hit: #6b5714; --union: #2a2a30; --error: #ff6b6b; --warn: #f0b45a;
     }
     :root[data-theme="light"] { color-scheme: light; }
     :root[data-theme="dark"] { color-scheme: dark; }
+
+    /* 전례색 표시 */
+    .litday { display: inline-flex; align-items: center; gap: 8px; margin: -16px 0 24px; font-size: 14px; color: var(--sub); text-align: center; }
+    .litdot { display: inline-block; width: 12px; height: 12px; flex: none; border: 2px solid var(--ink); border-radius: 2px; vertical-align: -1px; }
+    table.schedule td .litdot { margin-right: 6px; }
 
     /* 테마 선택 버튼 */
     .themebar { width: 100%; display: flex; justify-content: flex-end; margin: -16px 0 16px; }
@@ -167,6 +174,7 @@
   </div>
   <h1 class="title">주일미사 봉사자 배정</h1>
   <p class="sub">매월 마지막 주일은 연합미사</p>
+  <p class="litday" id="litday" hidden><span class="litdot" id="litdayDot"></span><span id="litdayText"></span></p>
 
   <!-- ───── 입장 (로그인 / 접근 요청) ───── -->
   <section class="card" id="gate">
@@ -289,8 +297,93 @@
       applyTheme(b.dataset.themeChoice);
     };
   });
+  // ───── 전례력: 날짜 → 전례색 (로마 예식, 한국 교회 기준 간이 계산) ─────
+  const LIT_COLORS = {
+    green:  { name: '녹색', light: '#2f9e5b', onLight: '#ffffff', dark: '#4fd18a', onDark: '#0b0b0e' },
+    purple: { name: '자색', light: '#7b4fd6', onLight: '#ffffff', dark: '#b195ff', onDark: '#0b0b0e' },
+    white:  { name: '백색', light: '#c9930a', onLight: '#1a1a1a', dark: '#f2c14e', onDark: '#0b0b0e' },  // 백색은 금색으로 표시
+    red:    { name: '홍색', light: '#d64545', onLight: '#ffffff', dark: '#ff6b6b', onDark: '#0b0b0e' },
+    rose:   { name: '장미색', light: '#d6609a', onLight: '#ffffff', dark: '#ff8cc0', onDark: '#0b0b0e' },
+  };
+  const DAY = 86400000;
+  const ymd = (y, m, d) => new Date(y, m - 1, d);
+  const addDays = (dt, n) => new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() + n);
+  const same = (a, b) => a.getTime() === b.getTime();
+  function easterOf(y) {   // 그레고리력 부활절 (Meeus/Jones/Butcher)
+    const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4;
+    const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
+    return ymd(y, month, day);
+  }
+  function advent1Of(y) { const xmas = ymd(y, 12, 25); return addDays(xmas, -((xmas.getDay() || 7) + 21)); }
+  function baptismOf(y) {  // 주님 공현 대축일 = 1월 2~8일 사이 주일, 주님 세례 축일 = 그다음 주일(공현이 7·8일이면 월요일)
+    let ep = ymd(y, 1, 2); while (ep.getDay() !== 0) ep = addDays(ep, 1);
+    return ep.getDate() <= 6 ? addDays(ep, 7) : addDays(ep, 1);
+  }
+  function liturgical(dt) {
+    dt = ymd(dt.getFullYear(), dt.getMonth() + 1, dt.getDate());
+    const y = dt.getFullYear(), m = dt.getMonth() + 1, d = dt.getDate();
+    const easter = easterOf(y), ash = addDays(easter, -46), pentecost = addDays(easter, 49);
+    const adv1 = advent1Of(y);
+    const R = (color, name) => ({ color, name });
+    if (dt >= ymd(y, 12, 25) || dt <= baptismOf(y)) {
+      if (m === 12 && d === 25) return R('white', '주님 성탄 대축일');
+      if (m === 1 && d === 1) return R('white', '천주의 성모 마리아 대축일');
+      return R('white', '성탄 시기');
+    }
+    if (dt >= adv1) {
+      if (m === 12 && d === 8) return R('white', '한국 교회의 수호자 원죄 없이 잉태되신 복되신 동정 마리아 대축일');
+      if (same(dt, addDays(adv1, 14))) return R('rose', '대림 제3주일 (자선 주일)');
+      return R('purple', '대림 시기');
+    }
+    if (same(dt, addDays(easter, -7))) return R('red', '주님 수난 성지 주일');
+    if (same(dt, addDays(easter, -2))) return R('red', '주님 수난 성금요일');
+    if (dt >= ash && dt < easter) {
+      if (same(dt, addDays(easter, -21))) return R('rose', '사순 제4주일');
+      return R('purple', '사순 시기');
+    }
+    if (same(dt, pentecost)) return R('red', '성령 강림 대축일');
+    if (dt >= easter && dt < pentecost) return R('white', same(dt, easter) ? '주님 부활 대축일' : '부활 시기');
+    if (same(dt, addDays(pentecost, 7))) return R('white', '삼위일체 대축일');
+    if (same(dt, addDays(pentecost, 14))) return R('white', '그리스도의 성체 성혈 대축일');
+    if (same(dt, addDays(adv1, -7))) return R('white', '온 누리의 임금이신 우리 주 예수 그리스도 왕 대축일');
+    const fixed = {
+      '2-2': ['white', '주님 봉헌 축일'], '6-29': ['red', '성 베드로와 성 바오로 사도 대축일'],
+      '8-6': ['white', '주님의 거룩한 변모 축일'], '8-15': ['white', '성모 승천 대축일'],
+      '9-14': ['red', '성 십자가 현양 축일'], '9-20': ['red', '한국 순교자 대축일'],
+      '11-1': ['white', '모든 성인 대축일'], '11-9': ['white', '라테라노 대성전 봉헌 축일'],
+    }[`${m}-${d}`];
+    if (fixed) return R(fixed[0], fixed[1]);
+    return R('green', '연중 시기');
+  }
+  function upcomingSunday(from) { const t = ymd(from.getFullYear(), from.getMonth() + 1, from.getDate()); return addDays(t, (7 - t.getDay()) % 7); }
+  function applyLiturgicalAccent() {
+    const sun = upcomingSunday(new Date());
+    const lit = liturgical(sun), c = LIT_COLORS[lit.color];
+    const s = document.documentElement.style;
+    s.setProperty('--lit-light', c.light); s.setProperty('--lit-on-light', c.onLight);
+    s.setProperty('--lit-dark', c.dark); s.setProperty('--lit-on-dark', c.onDark);
+    $('litdayDot').style.background = 'var(--accent)';
+    const isToday = same(sun, ymd(new Date().getFullYear(), new Date().getMonth() + 1, new Date().getDate()));
+    $('litdayText').textContent = `${isToday ? '오늘' : '이번'} 주일 ${sun.getMonth() + 1}월 ${sun.getDate()}일 · ${lit.name} · ${c.name}`;
+    show('litday', true);
+  }
+  function litDotFor(year, label) {   // '12월 06일' → 색 점
+    const mm = String(label).match(/(\d+)월\s*(\d+)일/);
+    if (!mm) return null;
+    const lit = liturgical(ymd(year, +mm[1], +mm[2])), c = LIT_COLORS[lit.color];
+    const dot = document.createElement('span');
+    dot.className = 'litdot';
+    dot.style.background = c.light;                                   // light-dark() 미지원 브라우저용
+    dot.style.background = `light-dark(${c.light}, ${c.dark})`;       // 테마 전환을 따라감
+    dot.title = `${lit.name} · ${c.name}`;
+    return dot;
+  }
+
   let token = null, me = null, headers = ['날짜', '해설', '독서1', '독서2', '보편 1,2', '보편3', '보편4'], current = null, months = [];
   applyTheme(savedTheme());
+  applyLiturgicalAccent();
 
   function setMsg(id, text, isError) { $(id).textContent = text || ''; $(id).className = 'msg' + (isError ? ' error' : ''); }
   function monthLabel(m) { const [y, mm] = m.split('-'); return `${y}년 ${Number(mm)}월`; }
@@ -455,7 +548,10 @@
     const tb = t.createTBody();
     res.rows.forEach(row => {
       const tr = tb.insertRow();
-      tr.insertCell().textContent = row[0];
+      const dateTd = tr.insertCell();
+      const dot = litDotFor(Number(res.month.slice(0, 4)), row[0]);
+      if (dot) dateTd.appendChild(dot);
+      dateTd.appendChild(document.createTextNode(row[0]));
       if (isUnion(row)) {
         const td = tr.insertCell(); td.colSpan = headers.length - 1; td.className = 'union'; td.textContent = row[1];
         return;
