@@ -121,6 +121,14 @@
 
     /* 생성 */
     .genbox { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 16px; align-items: center; }
+    .special { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .sp-pick { width: 100%; display: flex; gap: 10px; }
+    .sp-pick .field { flex: 1; min-width: 0; height: 36px; }
+    .chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+    .chips:empty { display: none; }
+    .chips li { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; font-size: 14px;
+      background: var(--surface); border: 2px solid var(--ink); border-radius: 5px; }
+    .chips button { border: 0; background: none; color: var(--ink); font: inherit; cursor: pointer; padding: 0 4px; }
     #confirm { background: var(--hit); text-align: center; }
     #confirm .actions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
 
@@ -203,7 +211,7 @@
           </div>
         </div>
         <div class="finder">
-          <input class="field" id="nameQuery" placeholder="내 이름 찾기" aria-label="이름으로 찾기">
+          <input class="field" id="nameQuery" placeholder="이름 또는 세례명 찾기" aria-label="이름 또는 세례명으로 찾기">
           <div id="mine"></div>
         </div>
         <div class="tablewrap"><table class="schedule" id="table"></table></div>
@@ -218,6 +226,14 @@
         <h2>새 배정표 만들기</h2>
         <div class="genbox">
           <input type="month" class="field" id="monthGen" aria-label="배정할 달">
+          <div class="special">
+            <button type="button" class="btn small" id="spAddBtn">+ 특전미사 추가</button>
+            <div class="sp-pick" id="spPick" hidden>
+              <input type="date" class="field" id="spDate" aria-label="특전미사 날짜">
+              <button type="button" class="btn small primary" id="spOk">추가</button>
+            </div>
+            <ul class="chips" id="spList"></ul>
+          </div>
           <button class="btn primary" id="genBtn">배정표 생성</button>
         </div>
       </section>
@@ -273,7 +289,7 @@
       applyTheme(b.dataset.themeChoice);
     };
   });
-  let token = null, me = null, headers = ['날짜', '해설', '독서1', '독서2', '보편 1,2', '보편 3,4'], current = null, months = [];
+  let token = null, me = null, headers = ['날짜', '해설', '독서1', '독서2', '보편 1,2', '보편3', '보편4'], current = null, months = [];
   applyTheme(savedTheme());
 
   function setMsg(id, text, isError) { $(id).textContent = text || ''; $(id).className = 'msg' + (isError ? ' error' : ''); }
@@ -447,7 +463,7 @@
       row.slice(1).forEach((v, i) => {
         const td = tr.insertCell();
         td.textContent = v;
-        td.dataset.name = nameOf(v); td.dataset.role = headers[i + 1]; td.dataset.date = row[0];
+        td.dataset.name = nameOf(v); td.dataset.full = String(v || '').replace(/\s+/g, ''); td.dataset.role = headers[i + 1]; td.dataset.date = row[0];
         if (v === SHORT) td.className = 'short';
       });
     });
@@ -472,14 +488,18 @@
     const q = $('nameQuery').value.trim();
     const hits = [];
     document.querySelectorAll('#table td[data-name]').forEach(td => {
-      const on = !!q && td.dataset.name.indexOf(q) >= 0;
+      // 이름과 세례명 모두 검색 (공백 무시: '세례자요한'도 '세례자 요한'과 일치)
+      const on = !!q && td.dataset.full.indexOf(q.replace(/\s+/g, '')) >= 0;
       td.classList.toggle('hit', on);
       if (on) hits.push(td);
     });
     if (!q) { $('mine').textContent = ''; return; }
     if (!hits.length) { $('mine').textContent = `'${q}' 배정 없음`; return; }
     const by = {};
-    hits.forEach(td => (by[td.dataset.name] = by[td.dataset.name] || []).push(`${td.dataset.date} ${td.dataset.role}`));
+    hits.forEach(td => {
+      const who = td.textContent.replace(/\n/g, ' ');   // '이름 (세례명)'
+      (by[who] = by[who] || []).push(`${td.dataset.date} ${td.dataset.role}`);
+    });
     $('mine').textContent = Object.keys(by).map(n => `${n}: ${by[n].join(' / ')}`).join('\n');
   }
   $('nameQuery').addEventListener('input', highlight);
@@ -508,12 +528,56 @@
   };
 
   // ───── 새로 만들기 (관리자) ─────
+  // 특전미사: 고른 날짜는 주일과 함께 날짜순으로 배정표에 들어간다
+  let specialDates = [];
+  const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토'];
+  function specialLabel(key) {
+    const [y, m, d] = key.split('-').map(Number);
+    return `${m}월 ${d}일 (${WEEKDAY[new Date(y, m - 1, d).getDay()]})`;
+  }
+  function syncSpecialRange() {
+    const m = $('monthGen').value;
+    if (!m) return;
+    const [y, mm] = m.split('-').map(Number);
+    const last = new Date(y, mm, 0).getDate();
+    $('spDate').min = `${m}-01`;
+    $('spDate').max = `${m}-${String(last).padStart(2, '0')}`;
+    if (!$('spDate').value || $('spDate').value.slice(0, 7) !== m) $('spDate').value = `${m}-01`;
+  }
+  function renderSpecial() {
+    const ul = $('spList');
+    ul.innerHTML = '';
+    specialDates.forEach(key => {
+      const li = document.createElement('li');
+      li.textContent = `특전 ${specialLabel(key)}`;
+      const x = document.createElement('button');
+      x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label', `${specialLabel(key)} 삭제`);
+      x.onclick = () => { specialDates = specialDates.filter(k => k !== key); renderSpecial(); };
+      li.appendChild(x);
+      ul.appendChild(li);
+    });
+  }
+  $('spAddBtn').onclick = () => { syncSpecialRange(); show('spPick', $('spPick').hidden); };
+  $('spOk').onclick = () => {
+    const v = $('spDate').value;
+    if (!v || v.slice(0, 7) !== $('monthGen').value) { setMsg('genMsg', '배정할 달 안의 날짜를 골라 주세요.', true); return; }
+    const [y, m, d] = v.split('-').map(Number);
+    if (new Date(y, m - 1, d).getDay() === 0) { setMsg('genMsg', '주일은 이미 포함되어 있습니다.', true); return; }
+    if (specialDates.indexOf(v) < 0) specialDates = specialDates.concat(v).sort();
+    setMsg('genMsg', '');
+    renderSpecial();
+  };
+  $('monthGen').addEventListener('change', () => {   // 달을 바꾸면 다른 달의 특전미사는 비운다
+    specialDates = specialDates.filter(k => k.slice(0, 7) === $('monthGen').value);
+    renderSpecial(); syncSpecialRange();
+  });
+
   async function generate(force) {
     show('confirm', false);
     $('genBtn').disabled = true; $('overwriteBtn').disabled = true;
     setMsg('genMsg', '배정하는 중…');
     try {
-      const res = await api('generate', { month: $('monthGen').value, force });
+      const res = await api('generate', { month: $('monthGen').value, force, specialDates });
       if (res.exists) {
         setMsg('genMsg', '');
         $('confirmText').textContent = `${monthLabel(res.month)} 배정표가 이미 있습니다. 직접 수정한 내용이 있다면 덮어쓰면 사라집니다.`;
