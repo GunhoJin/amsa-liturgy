@@ -20,6 +20,7 @@
                                        │  - 명단 시트 (이름·학년·세례명·역할)      │
                                        │  - 월별 배정표 시트 (YYYY-MM)            │
                                        │  - 접근관리 시트 (이메일·이름·상태)        │
+                                       │  - 배정통계 시트 (최근 6개월 횟수)        │
                                        └──────────────────────────────────────┘
 ```
 
@@ -67,6 +68,7 @@
 | `month` | 보기 이상 | `month` (YYYY-MM) | 배정표 행 |
 | `generate` | admin | `month`, `force`, `specialDates[]` | 생성 결과 또는 `exists` |
 | `requests` | admin | | 접근 요청 목록 |
+| `stats` | admin | | 최근 6개월 사람별 배정 횟수(합계·역할·월별·최근 배정일). `배정통계` 시트도 갱신 |
 | `decide` | admin | `email`, `decision` (`approve`/`reject`) | 갱신된 목록 |
 
 ## 화면
