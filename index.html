@@ -89,6 +89,33 @@
     .btn:disabled { opacity: .5; cursor: default; }
     .msg { min-height: 1.2em; white-space: pre-line; }
     .msg.error, .error { color: var(--error); }
+
+    /* 로더 — From Uiverse.io by PriyanshuGupta28 (색은 강조색으로 변경) */
+    .loading { display: flex; align-items: center; justify-content: center; gap: 12px; }
+    .spin-wrap { position: relative; width: 40px; height: 40px; flex: none; }
+    .spinner { position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; margin: -6.75px 0 0 -2.25px; transform: scale(.7); }
+    .spinner div {
+      position: absolute; width: 50%; height: 150%; background: var(--accent);
+      transform: rotate(calc(var(--rotation) * 1deg)) translate(0, calc(var(--translation) * 1%));
+      animation: spinner-fzua35 1s calc(var(--delay) * 1s) infinite ease;
+    }
+    .spinner div:nth-child(1)  { --delay: 0.1; --rotation: 36;  --translation: 150; }
+    .spinner div:nth-child(2)  { --delay: 0.2; --rotation: 72;  --translation: 150; }
+    .spinner div:nth-child(3)  { --delay: 0.3; --rotation: 108; --translation: 150; }
+    .spinner div:nth-child(4)  { --delay: 0.4; --rotation: 144; --translation: 150; }
+    .spinner div:nth-child(5)  { --delay: 0.5; --rotation: 180; --translation: 150; }
+    .spinner div:nth-child(6)  { --delay: 0.6; --rotation: 216; --translation: 150; }
+    .spinner div:nth-child(7)  { --delay: 0.7; --rotation: 252; --translation: 150; }
+    .spinner div:nth-child(8)  { --delay: 0.8; --rotation: 288; --translation: 150; }
+    .spinner div:nth-child(9)  { --delay: 0.9; --rotation: 324; --translation: 150; }
+    .spinner div:nth-child(10) { --delay: 1;   --rotation: 360; --translation: 150; }
+    @keyframes spinner-fzua35 {
+      0%, 10%, 20%, 30%, 50%, 60%, 70%, 80%, 90%, 100% {
+        transform: rotate(calc(var(--rotation) * 1deg)) translate(0, calc(var(--translation) * 1%));
+      }
+      50% { transform: rotate(calc(var(--rotation) * 1deg)) translate(0, calc(var(--translation) * 1.5%)); }
+    }
+    @media (prefers-reduced-motion: reduce) { .spinner div { animation-duration: 2.5s; } }
     .muted { color: var(--sub); }
 
     /* 로그인 */
@@ -528,7 +555,29 @@
   applyTheme(savedTheme());
   applyLiturgicalAccent();
 
-  function setMsg(id, text, isError) { $(id).textContent = text || ''; $(id).className = 'msg' + (isError ? ' error' : ''); }
+  function makeSpinner() {
+    const wrap = document.createElement('span');
+    wrap.className = 'spin-wrap';
+    wrap.setAttribute('aria-hidden', 'true');
+    const sp = document.createElement('span');
+    sp.className = 'spinner';
+    for (let i = 0; i < 10; i++) sp.appendChild(document.createElement('div'));
+    wrap.appendChild(sp);
+    return wrap;
+  }
+  /** 안내 문구 표시. '…'로 끝나는 진행 중 문구에는 로더를 붙인다. */
+  function setMsg(id, text, isError) {
+    const el = $(id);
+    el.textContent = '';
+    el.classList.toggle('error', !!isError);
+    const loading = !!text && !isError && /…$/.test(text);
+    el.classList.toggle('loading', loading);
+    if (!text) return;
+    if (loading) el.appendChild(makeSpinner());
+    const s = document.createElement('span');
+    s.textContent = text;
+    el.appendChild(s);
+  }
   function monthLabel(m) { const [y, mm] = m.split('-'); return `${y}년 ${Number(mm)}월`; }
   function emailOf(t) {
     try { return JSON.parse(decodeURIComponent(escape(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))).email || ''; }
@@ -572,8 +621,8 @@
     token = resp.credential;
     $('gateEmail').textContent = emailOf(token);
     show('gbtn', false); show('gateText', false); show('gateAccount', true); show('gateSwitch', true);
-    $('gateTitle').textContent = '확인 중…';
-    setMsg('gateMsg', '');
+    $('gateTitle').textContent = '확인 중';
+    setMsg('gateMsg', '계정을 확인하는 중…');
     try {
       me = await api('me');
       if (me.role === 'admin' || me.role === 'approved') return enterApp();
@@ -846,18 +895,18 @@
   // ───── 통계 (관리자) ─────
   let statsData = null;
   async function refreshStats() {
-    $('statsInfo').textContent = '집계하는 중…';
+    setMsg('statsInfo', '집계하는 중…');
     $('statsReload').disabled = true;
     try {
       statsData = await api('stats');
       const ms = statsData.months;
-      $('statsInfo').textContent = ms.length
+      setMsg('statsInfo', ms.length
         ? `최근 ${ms.length}개월 (${monthLabel(ms[0])} ~ ${monthLabel(ms[ms.length - 1])}) · 갱신 ${statsData.updatedAt} · 시트를 직접 고친 내용도 반영됩니다.`
-        : '아직 배정표가 없습니다.';
+        : '아직 배정표가 없습니다.');
       if (statsData.sheetUrl) { $('statsSheetLink').href = statsData.sheetUrl; show('statsSheetLink', true); }
       renderStats();
     } catch (e) {
-      $('statsInfo').textContent = e.message;
+      setMsg('statsInfo', e.message, true);
     } finally {
       $('statsReload').disabled = false;
     }
