@@ -112,10 +112,13 @@
     .finder .field { width: 200px; height: 36px; }
     #mine { font-size: 14px; white-space: pre-line; }
     .tablewrap { overflow-x: auto; padding: 0 4px 4px 0; -webkit-overflow-scrolling: touch; }
-    table.schedule { border-collapse: collapse; width: 100%; min-width: 600px; background: var(--surface); font-size: 15px; }
+    /* 고정 레이아웃: 날짜 열은 고정 폭, 나머지(해설~보편4)는 같은 폭으로 나눔 */
+    table.schedule { border-collapse: collapse; width: 100%; min-width: 680px; table-layout: fixed; background: var(--surface); font-size: 15px; }
+    table.schedule th:first-child { width: 112px; }
     table.schedule th, table.schedule td { border: 2px solid var(--ink); padding: 9px 6px; text-align: center; white-space: pre-line; line-height: 1.45; }
     table.schedule th { background: var(--card); white-space: nowrap; }
     table.schedule td:first-child { white-space: nowrap; }
+    table.schedule td { overflow-wrap: anywhere; }
     table.schedule td.hit { background: var(--hit); }
     td.union { background: var(--union); }
     td.short { color: var(--error); }
@@ -160,6 +163,7 @@
       .bar .actions .btn { flex: 1; }
       .finder .field { width: 100%; }
       table.schedule { font-size: 14px; }
+      table.schedule th:first-child { width: 100px; }
     }
   </style>
 </head>
