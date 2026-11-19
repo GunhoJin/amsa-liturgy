@@ -362,17 +362,35 @@
     if (fixed) return R(fixed[0], fixed[1]);
     return R('green', '연중 시기');
   }
-  // 강조색 = 페이지를 연 날짜의 전례색
-  function applyLiturgicalAccent() {
-    const now = new Date();
-    const lit = liturgical(now), c = LIT_COLORS[lit.color];
+  // 강조색 = 다음 미사의 전례색
+  //  - 기본: 다가오는 주일(오늘이 주일이면 오늘)
+  //  - 배정표를 불러오면 그 표의 미사 날짜(특전미사 포함) 중 오늘 이후 가장 빠른 날
+  const today0 = () => { const n = new Date(); return ymd(n.getFullYear(), n.getMonth() + 1, n.getDate()); };
+  function upcomingSunday() { const t = today0(); return addDays(t, (7 - t.getDay()) % 7); }
+  let nextMass = null;
+  function applyLiturgicalAccent(dt) {
+    nextMass = dt || upcomingSunday();
+    const lit = liturgical(nextMass), c = LIT_COLORS[lit.color];
     const s = document.documentElement.style;
     s.setProperty('--lit-light', c.light); s.setProperty('--lit-on-light', c.onLight);
     s.setProperty('--lit-dark', c.dark); s.setProperty('--lit-on-dark', c.onDark);
     $('litdayDot').style.background = 'var(--accent)';
-    const wd = ['일', '월', '화', '수', '목', '금', '토'][now.getDay()];
-    $('litdayText').textContent = `오늘 ${now.getMonth() + 1}월 ${now.getDate()}일 (${wd}) · ${lit.name} · ${c.name}`;
+    const wd = nextMass.getDay() === 0 ? '주일' : ['일', '월', '화', '수', '목', '금', '토'][nextMass.getDay()] + '요일';
+    const when = same(nextMass, today0()) ? '오늘 미사' : '다음 미사';
+    $('litdayText').textContent = `${when} ${nextMass.getMonth() + 1}월 ${nextMass.getDate()}일 (${wd}) · ${lit.name} · ${c.name}`;
     show('litday', true);
+  }
+  /** 불러온 배정표에 주일보다 먼저 오는 미사(특전미사)가 있으면 그 날짜로 */
+  function accentFromSchedule(res) {
+    const year = Number(res.month.slice(0, 4)), t = today0();
+    let best = upcomingSunday();
+    res.rows.forEach(row => {
+      const mm = String(row[0]).match(/(\d+)월\s*(\d+)일/);
+      if (!mm) return;
+      const dt = ymd(year, +mm[1], +mm[2]);
+      if (dt >= t && dt < best) best = dt;
+    });
+    if (!nextMass || !same(best, nextMass)) applyLiturgicalAccent(best);
   }
   function litDotFor(year, label) {   // '12월 06일' → 색 점
     const mm = String(label).match(/(\d+)월\s*(\d+)일/);
@@ -582,6 +600,9 @@
     } else show('statsBox', false);
 
     show('result', true);
+    // 이번 달(또는 다가오는 주일이 속한 달) 표일 때만 다음 미사 판단에 사용
+    const key = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    if (res.month === key(today0()) || res.month === key(upcomingSunday())) accentFromSchedule(res);
     highlight();
   }
 
