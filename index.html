@@ -595,6 +595,7 @@
   const nameOf = v => String(v || '').split('\n')[0].trim();
 
   function render(res) {
+    if (Array.isArray(res.headers) && res.headers.length > 1) headers = res.headers;   // 그 달 시트의 머리글 그대로
     current = res;
     $('resTitle').textContent = `${monthLabel(res.month)} 봉사자`;
     if (res.sheetUrl) { $('sheetLink').href = res.sheetUrl; show('sheetLink', true); } else show('sheetLink', false);
