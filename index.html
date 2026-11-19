@@ -330,6 +330,11 @@
     if (dt >= ymd(y, 12, 25) || dt <= baptismOf(y)) {
       if (m === 12 && d === 25) return R('white', '주님 성탄 대축일');
       if (m === 1 && d === 1) return R('white', '천주의 성모 마리아 대축일');
+      if (m === 1) {
+        const bap = baptismOf(y), ep = bap.getDay() === 0 ? addDays(bap, -7) : addDays(bap, -1);
+        if (same(dt, ep)) return R('white', '주님 공현 대축일');
+        if (same(dt, bap)) return R('white', '주님 세례 축일');
+      }
       return R('white', '성탄 시기');
     }
     if (dt >= adv1) {
