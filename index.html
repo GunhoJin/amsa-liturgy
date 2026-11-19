@@ -112,7 +112,7 @@
     .finder .field { width: 200px; height: 36px; }
     #mine { font-size: 14px; white-space: pre-line; }
     .tablewrap { overflow-x: auto; padding: 0 4px 4px 0; -webkit-overflow-scrolling: touch; }
-    /* 고정 레이아웃: 날짜 열은 고정 폭, 나머지(해설~보편4)는 같은 폭으로 나눔 */
+    /* 고정 레이아웃: 날짜 열은 고정 폭, 나머지(해설~보편 3,4)는 같은 폭으로 나눔 */
     table.schedule { border-collapse: collapse; width: 100%; min-width: 680px; table-layout: fixed; background: var(--surface); font-size: 15px; }
     table.schedule th:first-child { width: 112px; }
     table.schedule th, table.schedule td { border: 2px solid var(--ink); padding: 9px 6px; text-align: center; white-space: pre-line; line-height: 1.45; }
@@ -438,7 +438,7 @@
     return dot;
   }
 
-  let token = null, me = null, headers = ['날짜', '해설', '독서1', '독서2', '보편 1,2', '보편3', '보편4'], current = null, months = [];
+  let token = null, me = null, headers = ['날짜', '해설', '독서1', '독서2', '보편 1,2', '보편 3,4'], current = null, months = [];
   applyTheme(savedTheme());
   applyLiturgicalAccent();
 
