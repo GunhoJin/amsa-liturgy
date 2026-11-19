@@ -4,78 +4,240 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
+  <meta name="color-scheme" content="light dark">
   <title>주일미사 봉사자 배정</title>
   <script src="https://accounts.google.com/gsi/client" async></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js" defer></script>
   <style>
+    /* 타이틀: 던파 비트비트체 v2 (넥슨 무료 폰트) / 본문: 네오둥근모 (OFL) */
     @font-face { font-family: 'DNFBitBitv2'; font-display: swap;
       src: url('https://cdn.df.nexon.com/img/common/font/DNFBitBitv2.otf') format('opentype'); }
     @font-face { font-family: 'NeoDunggeunmo'; font-display: swap;
       src: url('https://cdn.jsdelivr.net/npm/@kfonts/neodgm@0.5.0/neodgm.woff2') format('woff2'); }
-    :root { --accent: #2d8cf0; --ink: #323232; --sub: #666; --card: lightgrey; --bg: #f4f4f0; --error: #d63031; }
+
+    /* 스타일 참고: Uiverse.io (andrew-demchenk0) */
+    :root {
+      --bg: #f4f4f0; --surface: #ffffff; --card: #d3d3d3; --ink: #323232; --sub: #666666;
+      --accent: #2d8cf0; --on-accent: #ffffff; --hit: #ffe066; --union: #eaeaea; --error: #d63031; --warn: #a15c00;
+      --title-font: 'DNFBitBitv2', 'NeoDunggeunmo', 'Malgun Gothic', sans-serif;
+      --body-font: 'NeoDunggeunmo', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #16161a; --surface: #222228; --card: #2e2e35; --ink: #e4e4e7; --sub: #a1a1aa;
+        --accent: #3d9bff; --on-accent: #0b0b0e; --hit: #6b5714; --union: #2a2a30; --error: #ff6b6b; --warn: #f0b45a;
+      }
+    }
     * { box-sizing: border-box; }
     [hidden] { display: none !important; }
-    body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'NeoDunggeunmo', 'Malgun Gothic', sans-serif;
-      font-size: 16px; font-synthesis: none; -webkit-font-smoothing: none; }
-    main { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 16px; }
-    h1 { margin: 0 0 8px; font-family: 'DNFBitBitv2', 'NeoDunggeunmo', sans-serif; font-weight: 400; font-size: 32px;
-      text-align: center; text-shadow: 3px 3px 0 var(--accent); }
-    .sub { margin: 0 0 28px; color: var(--sub); text-align: center; }
-    .card { width: 100%; max-width: 340px; padding: 24px 20px; display: flex; flex-direction: column; align-items: center; gap: 18px;
-      background: var(--card); border: 2px solid var(--ink); border-radius: 5px; box-shadow: 4px 4px var(--ink); text-align: center; }
-    .card h2 { margin: 0; font-family: 'DNFBitBitv2', 'NeoDunggeunmo', sans-serif; font-weight: 400; font-size: 21px; }
-    .account { width: 100%; padding: 10px; background: #fff; border: 2px solid var(--ink); border-radius: 5px; box-shadow: 4px 4px var(--ink);
-      word-break: break-all; }
-    .account small { display: block; color: var(--sub); margin-bottom: 4px; }
-    input { width: 100%; height: 40px; padding: 5px 10px; border: 2px solid var(--ink); border-radius: 5px; box-shadow: 4px 4px var(--ink);
-      font: inherit; outline: none; background: #fff; }
-    input:focus { border-color: var(--accent); }
-    .btn { min-width: 160px; height: 42px; padding: 0 16px; border: 2px solid var(--ink); border-radius: 5px; box-shadow: 4px 4px var(--ink);
-      background: var(--accent); color: #fff; font: inherit; cursor: pointer; text-decoration: none;
-      display: inline-flex; align-items: center; justify-content: center; }
-    .btn.plain { background: #fff; color: var(--ink); }
+    html { background: var(--bg); }
+    body {
+      margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body-font); font-size: 16px; line-height: 1.6;
+      font-synthesis: none; -webkit-font-smoothing: none; word-break: keep-all; overflow-wrap: anywhere;
+    }
+    main { max-width: 900px; margin: 0 auto; padding: 40px 16px 56px; display: flex; flex-direction: column; align-items: center; }
+    h1, h2, h3 { font-family: var(--title-font); font-weight: 400; margin: 0; }
+    .title { font-size: clamp(26px, 7vw, 36px); text-align: center; text-shadow: 3px 3px 0 var(--accent); line-height: 1.3; }
+    .sub { margin: 8px 0 28px; color: var(--sub); text-align: center; }
+
+    /* 공통 박스 */
+    .card, .panel {
+      background: var(--card); border: 2px solid var(--ink); border-radius: 5px; box-shadow: 4px 4px var(--ink);
+    }
+    .card { width: 100%; max-width: 340px; padding: 24px 20px; display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; }
+    .card h2 { font-size: 21px; }
+    .panel { width: 100%; margin-top: 24px; padding: 18px; background: var(--surface); }
+    .field {
+      width: 100%; height: 42px; padding: 5px 10px; border: 2px solid var(--ink); border-radius: 5px; box-shadow: 4px 4px var(--ink);
+      background: var(--surface); color: var(--ink); font: inherit; outline: none;
+    }
+    .field:focus { border-color: var(--accent); }
+    .field::placeholder { color: var(--sub); }
+    .btn {
+      min-width: 120px; height: 42px; padding: 0 16px; border: 2px solid var(--ink); border-radius: 5px; box-shadow: 4px 4px var(--ink);
+      background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; text-decoration: none; white-space: nowrap;
+      display: inline-flex; align-items: center; justify-content: center; transition: transform .05s, box-shadow .05s;
+    }
     .btn:active { box-shadow: 0 0 var(--ink); transform: translate(3px, 3px); }
+    .btn.primary { background: var(--accent); color: var(--on-accent); }
+    .btn.small { min-width: 0; height: 34px; font-size: 14px; padding: 0 12px; }
     .btn:disabled { opacity: .5; cursor: default; }
-    .msg { min-height: 1.2em; line-height: 1.6; }
-    .msg.error { color: var(--error); }
-    #gbtn { min-height: 44px; }
-    .hint { max-width: 340px; margin-top: 24px; color: var(--sub); line-height: 1.7; text-align: center; }
+    .msg { min-height: 1.2em; white-space: pre-line; }
+    .msg.error, .error { color: var(--error); }
+    .muted { color: var(--sub); }
+
+    /* 로그인 */
+    #gbtn { min-height: 44px; display: flex; justify-content: center; }
+    .account { width: 100%; padding: 10px; background: var(--surface); border: 2px solid var(--ink); border-radius: 5px; box-shadow: 4px 4px var(--ink); overflow-wrap: anywhere; }
+    .account small { display: block; color: var(--sub); }
+
+    /* 앱 상단 */
+    .topbar { width: 100%; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .who { color: var(--sub); font-size: 14px; overflow-wrap: anywhere; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 4px; }
+    .tabs .btn[aria-selected="true"] { background: var(--accent); color: var(--on-accent); }
+
+    /* 보기 */
+    .viewbar { width: 100%; max-width: 420px; display: flex; gap: 12px; }
+    .viewbar .field { flex: 1; min-width: 0; }
+    .bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .bar h2 { font-size: 20px; }
+    .bar .actions { display: flex; gap: 12px; }
+    .finder { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 16px; }
+    .finder .field { width: 200px; height: 36px; }
+    #mine { font-size: 14px; white-space: pre-line; }
+    .tablewrap { overflow-x: auto; padding: 0 4px 4px 0; -webkit-overflow-scrolling: touch; }
+    table.schedule { border-collapse: collapse; width: 100%; min-width: 600px; background: var(--surface); font-size: 15px; }
+    table.schedule th, table.schedule td { border: 2px solid var(--ink); padding: 9px 6px; text-align: center; white-space: pre-line; line-height: 1.45; }
+    table.schedule th { background: var(--card); white-space: nowrap; }
+    table.schedule td:first-child { white-space: nowrap; }
+    table.schedule td.hit { background: var(--hit); }
+    td.union { background: var(--union); }
+    td.short { color: var(--error); }
+    .note { color: var(--warn); font-size: 14px; padding-left: 18px; }
+    details { margin-top: 16px; font-size: 14px; }
+    summary { cursor: pointer; }
+    table.small { margin-top: 10px; border-collapse: collapse; font-size: 14px; }
+    table.small th, table.small td { border: 2px solid var(--ink); padding: 5px 10px; text-align: center; }
+    table.small th { background: var(--card); }
+
+    /* 생성 */
+    .genbox { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 16px; align-items: center; }
+    #confirm { background: var(--hit); text-align: center; }
+    #confirm .actions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
+    /* 접근 관리 */
+    .group { margin-top: 18px; }
+    .group:first-child { margin-top: 0; }
+    .group h3 { font-size: 17px; margin-bottom: 10px; }
+    .req { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 10px 12px; margin-bottom: 10px; border: 2px solid var(--ink); border-radius: 5px; background: var(--card); }
+    .req .info { min-width: 0; }
+    .req .info small { display: block; color: var(--sub); font-size: 13px; overflow-wrap: anywhere; }
+    .req .actions { display: flex; gap: 10px; }
+
+    .hint { max-width: 340px; margin: 24px 0 0; color: var(--sub); text-align: center; }
+    .foot { margin-top: 32px; font-size: 13px; color: var(--sub); text-align: center; }
+    .foot a { color: var(--accent); }
+
+    @media (max-width: 520px) {
+      main { padding-top: 28px; }
+      .panel { padding: 14px 12px; }
+      .bar .actions { width: 100%; }
+      .bar .actions .btn { flex: 1; }
+      .finder .field { width: 100%; }
+      table.schedule { font-size: 14px; }
+    }
   </style>
 </head>
 <body>
 <main>
-  <h1>주일미사 봉사자 배정</h1>
-  <p class="sub">암사동성당 주일학교 전례부</p>
+  <h1 class="title">주일미사 봉사자 배정</h1>
+  <p class="sub">매월 마지막 주일은 연합미사</p>
 
-  <div class="card">
-    <h2 id="heading">입장하기</h2>
-    <p id="intro" style="margin:0;line-height:1.6">구글 계정을 선택하면<br>승인된 계정은<br>배정표로 이동합니다.</p>
+  <!-- ───── 입장 (로그인 / 접근 요청) ───── -->
+  <section class="card" id="gate">
+    <h2 id="gateTitle">입장하기</h2>
+    <p id="gateText" style="margin:0">구글 계정을 선택하면<br>승인된 계정은<br>배정표로 이동합니다.</p>
     <div id="gbtn"></div>
-    <div class="account" id="account" hidden><small>선택한 구글 계정</small><span id="email"></span></div>
-    <input id="name" placeholder="이름 (예: 홍길동)" maxlength="40" hidden aria-label="이름">
-    <button class="btn" id="request" hidden>접근 요청 보내기</button>
-    <a class="btn" id="open" hidden>배정표 열기</a>
-    <button class="btn plain" id="switch" hidden>다른 계정 선택</button>
-    <div class="msg" id="msg" role="status"></div>
-  </div>
+    <div class="account" id="gateAccount" hidden><small>선택한 계정</small><span id="gateEmail"></span></div>
+    <input class="field" id="reqName" placeholder="이름 (예: 홍길동)" maxlength="40" hidden aria-label="이름">
+    <button class="btn primary" id="reqBtn" hidden>접근 요청 보내기</button>
+    <button class="btn" id="gateSwitch" hidden>다른 계정 선택</button>
+    <div class="msg" id="gateMsg" role="status"></div>
+  </section>
+  <p class="hint" id="gateHint">처음이면 계정을 선택한 뒤<br><b>접근 요청</b>을 보내 주세요.</p>
 
-  <p class="hint">처음이면 계정을 선택한 뒤 <br><b>접근 요청</b>을 보내 주세요.<br>승인되면 메일로 알려드립니다.</p>
+  <!-- ───── 앱 (승인된 사용자) ───── -->
+  <section id="app" hidden style="width:100%;display:flex;flex-direction:column;align-items:center">
+    <div class="topbar">
+      <span class="who" id="who"></span>
+      <button class="btn small" id="switchBtn">다른 계정</button>
+    </div>
+
+    <nav class="tabs" id="tabs" hidden role="tablist">
+      <button class="btn small" data-tab="view" role="tab">배정표</button>
+      <button class="btn small" data-tab="gen" role="tab">새로 만들기</button>
+      <button class="btn small" data-tab="access" role="tab">접근 관리 <span id="pendingBadge"></span></button>
+    </nav>
+
+    <!-- 보기 -->
+    <div id="tab-view" style="width:100%;display:flex;flex-direction:column;align-items:center">
+      <div class="viewbar" style="margin-top:16px">
+        <select class="field" id="monthView" aria-label="볼 달"></select>
+        <button class="btn primary" id="viewBtn">보기</button>
+      </div>
+      <div class="msg" id="viewMsg" role="status" style="margin-top:16px"></div>
+
+      <section class="panel" id="result" hidden>
+        <div class="bar">
+          <h2 id="resTitle"></h2>
+          <div class="actions">
+            <a class="btn small" id="sheetLink" target="_blank" rel="noopener" hidden>시트 열기</a>
+            <button class="btn small primary" id="xlsxBtn">엑셀 다운로드</button>
+          </div>
+        </div>
+        <div class="finder">
+          <input class="field" id="nameQuery" placeholder="내 이름 찾기" aria-label="이름으로 찾기">
+          <div id="mine"></div>
+        </div>
+        <div class="tablewrap"><table class="schedule" id="table"></table></div>
+        <ul class="note" id="warnings"></ul>
+        <details id="statsBox" hidden><summary>인원별 배정 횟수</summary><table class="small" id="stats"></table></details>
+      </section>
+    </div>
+
+    <!-- 새로 만들기 (관리자) -->
+    <div id="tab-gen" hidden style="width:100%;display:flex;flex-direction:column;align-items:center">
+      <section class="card" style="margin-top:16px">
+        <h2>새 배정표 만들기</h2>
+        <div class="genbox">
+          <input type="month" class="field" id="monthGen" aria-label="배정할 달">
+          <button class="btn primary" id="genBtn">배정표 생성</button>
+        </div>
+      </section>
+      <div class="msg" id="genMsg" role="status" style="margin-top:20px;text-align:center"></div>
+      <section class="panel" id="confirm" hidden style="max-width:520px">
+        <div id="confirmText"></div>
+        <div class="actions">
+          <button class="btn small primary" id="overwriteBtn">새로 배정해서 덮어쓰기</button>
+          <button class="btn small" id="cancelBtn">취소</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- 접근 관리 (관리자) -->
+    <div id="tab-access" hidden style="width:100%">
+      <section class="panel">
+        <div class="bar" style="margin-bottom:6px">
+          <h2>접근 관리</h2>
+          <button class="btn small" id="accessReload">새로고침</button>
+        </div>
+        <p class="muted" style="margin:0 0 16px;font-size:14px">반려된 사람도 다시 요청할 수 있고, 승인된 사람은 '해제'로 접근을 막을 수 있습니다.</p>
+        <div id="accessList"></div>
+      </section>
+    </div>
+  </section>
+
+  <p class="foot"><a href="privacy.html">개인정보처리방침</a></p>
 </main>
 
 <script>
-  // ── 설정 ──
-  const CLIENT_ID = '977226801498-33q8sggagt2280osekqd2tj2ddgnh5eu.apps.googleusercontent.com';  // Google Cloud OAuth 클라이언트 ID (웹)
-  const API_URL = 'https://script.google.com/macros/s/AKfycbwGoXNrxsZsINHPOP7efP8Rq6xgimiVoQlmklX1F4QpWGkS0kZjLNIiEeEoYXPZh9MQ/exec';
+  // ───── 설정 ─────
+  const CLIENT_ID = '977226801498-33q8sggagt2280osekqd2tj2ddgnh5eu.apps.googleusercontent.com';
+  const API_URL = 'https://script.google.com/macros/s/AKfycbyoBJBsPGTL1dzhrkAqT1AEKHiZiH05cxKNpCIOHuEoGG0pY96MwWClnMCsT5ELRkpdsQ/exec';
+  const SHORT = '(인원 부족)';
 
   const $ = id => document.getElementById(id);
-  let token = null;
+  const show = (id, on) => { $(id).hidden = !on; };
+  const dark = matchMedia('(prefers-color-scheme: dark)');
+  let token = null, me = null, headers = ['날짜', '해설', '독서1', '독서2', '보편 1,2', '보편 3,4'], current = null, months = [];
 
-  function show(id, on) { $(id).hidden = !on; }
-  function setMsg(text, isError) { $('msg').textContent = text || ''; $('msg').className = 'msg' + (isError ? ' error' : ''); }
-  function emailFromToken(t) {
-    try {
-      const b = t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-      return JSON.parse(decodeURIComponent(escape(atob(b)))).email || '';
-    } catch (e) { return ''; }
+  function setMsg(id, text, isError) { $(id).textContent = text || ''; $(id).className = 'msg' + (isError ? ' error' : ''); }
+  function monthLabel(m) { const [y, mm] = m.split('-'); return `${y}년 ${Number(mm)}월`; }
+  function emailOf(t) {
+    try { return JSON.parse(decodeURIComponent(escape(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))).email || ''; }
+    catch (e) { return ''; }
   }
 
   async function api(action, extra) {
@@ -85,72 +247,310 @@
       body: JSON.stringify(Object.assign({ action, token }, extra || {})),
     });
     const data = await res.json();
-    if (!data.ok) throw new Error(data.error || '요청을 처리하지 못했습니다.');
+    if (!data.ok) {
+      if (/로그인/.test(data.error || '')) signOut(data.error);
+      throw new Error(data.error || '요청을 처리하지 못했습니다.');
+    }
     return data;
   }
 
-  function resetToChooser() {
-    token = null;
-    ['account', 'name', 'request', 'open', 'switch'].forEach(id => show(id, false));
-    show('gbtn', true); show('intro', true);
-    $('heading').textContent = '입장하기';
-    setMsg('');
-    google.accounts.id.disableAutoSelect();
+  // ───── 로그인 / 입장 ─────
+  function renderGoogleButton() {
+    $('gbtn').innerHTML = '';
+    google.accounts.id.renderButton($('gbtn'), {
+      theme: dark.matches ? 'filled_black' : 'outline', size: 'large', text: 'continue_with', locale: 'ko', width: 260,
+    });
+  }
+
+  function signOut(message) {
+    token = null; me = null;
+    show('app', false); show('gate', true);
+    ['gateAccount', 'reqName', 'reqBtn', 'gateSwitch'].forEach(id => show(id, false));
+    show('gbtn', true); show('gateText', true);
+    $('gateTitle').textContent = '입장하기';
+    show('gateHint', true);
+    setMsg('gateMsg', message || '', !!message);
+    if (window.google) { google.accounts.id.disableAutoSelect(); renderGoogleButton(); }
   }
 
   async function onCredential(resp) {
     token = resp.credential;
-    $('email').textContent = emailFromToken(token);
-    show('gbtn', false); show('intro', false); show('account', true); show('switch', true);
-    $('heading').textContent = '확인 중…';
-    setMsg('');
+    $('gateEmail').textContent = emailOf(token);
+    show('gbtn', false); show('gateText', false); show('gateAccount', true); show('gateSwitch', true);
+    $('gateTitle').textContent = '확인 중…';
+    setMsg('gateMsg', '');
     try {
-      const st = await api('status');
-      if (st.approved) {
-        $('heading').textContent = '승인된 계정입니다';
-        $('open').href = st.siteUrl;
-        show('open', true);
-        setMsg('배정표로 이동합니다…');
-        location.href = st.siteUrl;
-        return;
-      }
-      $('heading').textContent = '접근 요청';
-      show('name', true); show('request', true);
-      setMsg('아직 승인되지 않은 계정입니다.');
+      me = await api('me');
+      if (me.role === 'admin' || me.role === 'approved') return enterApp();
+      gateRequestView();
     } catch (e) {
-      $('heading').textContent = '오류';
-      setMsg(e.message, true);
+      $('gateTitle').textContent = '오류';
+      setMsg('gateMsg', e.message, true);
     }
   }
 
-  $('request').onclick = async () => {
-    const name = $('name').value.trim();
-    if (!name) { setMsg('이름을 입력해 주세요.', true); $('name').focus(); return; }
-    $('request').disabled = true;
-    setMsg('요청을 보내는 중…');
+  function gateRequestView() {
+    const r = me.role;
+    if (r === 'pending') {
+      $('gateTitle').textContent = '승인 대기 중';
+      setMsg('gateMsg', '관리자가 승인하면\n메일로 알려드립니다.');
+      show('reqName', false); show('reqBtn', false);
+      return;
+    }
+    $('gateTitle').textContent = '접근 요청';
+    $('reqName').value = me.name || '';
+    show('reqName', true); show('reqBtn', true);
+    setMsg('gateMsg', r === 'rejected' ? '이전 요청이 반려되었습니다.\n다시 요청할 수 있습니다.' : '아직 승인되지 않은 계정입니다.');
+  }
+
+  $('reqBtn').onclick = async () => {
+    const name = $('reqName').value.trim();
+    if (!name) { setMsg('gateMsg', '이름을 입력해 주세요.', true); $('reqName').focus(); return; }
+    $('reqBtn').disabled = true;
+    setMsg('gateMsg', '요청을 보내는 중…');
     try {
       const r = await api('request', { name });
-      if (r.approved) { location.href = r.siteUrl; return; }
-      $('heading').textContent = '요청 완료';
-      show('name', false); show('request', false);
-      setMsg(r.message);
+      if (r.role === 'admin' || r.role === 'approved') { me.role = r.role; return enterApp(); }
+      me.role = r.role || 'pending';
+      gateRequestView();
+      setMsg('gateMsg', r.message);
     } catch (e) {
-      $('request').disabled = false;
-      setMsg(e.message, true);
+      setMsg('gateMsg', e.message, true);
+    } finally {
+      $('reqBtn').disabled = false;
     }
   };
-  $('switch').onclick = resetToChooser;
+  $('gateSwitch').onclick = () => signOut();
+  $('switchBtn').onclick = () => signOut();
 
-  window.onload = () => {
+  // ───── 앱 ─────
+  async function enterApp() {
+    show('gate', false); show('gateHint', false); show('app', true);
+    $('who').textContent = `${me.email}${me.role === 'admin' ? ' · 관리자' : ''}`;
+    const isAdmin = me.role === 'admin';
+    show('tabs', isAdmin);
+    setMsg('viewMsg', '불러오는 중…');
+    try {
+      const init = await api('init');
+      headers = init.headers || headers;
+      $('monthGen').value = init.defaultMonth;
+      fillMonths(init.months, init.viewMonth);
+      if (init.viewMonth) await loadMonth(init.viewMonth); else setMsg('viewMsg', '아직 저장된 배정표가 없습니다.');
+      if (isAdmin) {
+        refreshAccess();
+        selectTab(location.hash === '#access' ? 'access' : 'view');
+      }
+    } catch (e) {
+      setMsg('viewMsg', e.message, true);
+    }
+  }
+
+  function selectTab(name) {
+    document.querySelectorAll('#tabs .btn').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+    ['view', 'gen', 'access'].forEach(t => show('tab-' + t, t === name));
+    if (name === 'access') refreshAccess();
+  }
+  document.querySelectorAll('#tabs .btn').forEach(b => { b.onclick = () => selectTab(b.dataset.tab); });
+
+  function fillMonths(list, selected) {
+    months = list || [];
+    const sel = $('monthView');
+    sel.innerHTML = '';
+    if (!months.length) {
+      const o = document.createElement('option'); o.textContent = '저장된 배정표 없음'; o.value = '';
+      sel.appendChild(o); $('viewBtn').disabled = true; return;
+    }
+    months.forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = monthLabel(m); sel.appendChild(o); });
+    if (selected) sel.value = selected;
+    $('viewBtn').disabled = false;
+  }
+
+  async function loadMonth(m) {
+    if (!m) return;
+    $('viewBtn').disabled = true;
+    setMsg('viewMsg', '불러오는 중…');
+    try {
+      render(await api('month', { month: m }));
+      setMsg('viewMsg', '');
+    } catch (e) {
+      setMsg('viewMsg', e.message, true);
+    } finally {
+      $('viewBtn').disabled = false;
+    }
+  }
+  $('viewBtn').onclick = () => loadMonth($('monthView').value);
+  $('monthView').onchange = () => loadMonth($('monthView').value);
+
+  const isUnion = row => String(row[1]).indexOf('연합미사') >= 0 && row.slice(2).every(v => !v);
+  const nameOf = v => String(v || '').split('\n')[0].trim();
+
+  function render(res) {
+    current = res;
+    $('resTitle').textContent = `${monthLabel(res.month)} 봉사자`;
+    if (res.sheetUrl) { $('sheetLink').href = res.sheetUrl; show('sheetLink', true); } else show('sheetLink', false);
+
+    const t = $('table');
+    t.innerHTML = '';
+    const hr = t.createTHead().insertRow();
+    headers.forEach(h => { const th = document.createElement('th'); th.textContent = h; hr.appendChild(th); });
+    const tb = t.createTBody();
+    res.rows.forEach(row => {
+      const tr = tb.insertRow();
+      tr.insertCell().textContent = row[0];
+      if (isUnion(row)) {
+        const td = tr.insertCell(); td.colSpan = headers.length - 1; td.className = 'union'; td.textContent = row[1];
+        return;
+      }
+      row.slice(1).forEach((v, i) => {
+        const td = tr.insertCell();
+        td.textContent = v;
+        td.dataset.name = nameOf(v); td.dataset.role = headers[i + 1]; td.dataset.date = row[0];
+        if (v === SHORT) td.className = 'short';
+      });
+    });
+
+    const w = $('warnings'); w.innerHTML = '';
+    (res.warnings || []).forEach(m => { const li = document.createElement('li'); li.textContent = m; w.appendChild(li); });
+
+    const st = $('stats'); st.innerHTML = '';
+    if (res.stats) {
+      const h = st.createTHead().insertRow();
+      ['이름', '학년', '이번 달', '최근 누적'].forEach(x => { const th = document.createElement('th'); th.textContent = x; h.appendChild(th); });
+      const b = st.createTBody();
+      res.stats.forEach(s => { const r = b.insertRow(); [s.name, s.group, s.month, s.recent].forEach(v => { r.insertCell().textContent = v; }); });
+      show('statsBox', true);
+    } else show('statsBox', false);
+
+    show('result', true);
+    highlight();
+  }
+
+  function highlight() {
+    const q = $('nameQuery').value.trim();
+    const hits = [];
+    document.querySelectorAll('#table td[data-name]').forEach(td => {
+      const on = !!q && td.dataset.name.indexOf(q) >= 0;
+      td.classList.toggle('hit', on);
+      if (on) hits.push(td);
+    });
+    if (!q) { $('mine').textContent = ''; return; }
+    if (!hits.length) { $('mine').textContent = `'${q}' 배정 없음`; return; }
+    const by = {};
+    hits.forEach(td => (by[td.dataset.name] = by[td.dataset.name] || []).push(`${td.dataset.date} ${td.dataset.role}`));
+    $('mine').textContent = Object.keys(by).map(n => `${n}: ${by[n].join(' / ')}`).join('\n');
+  }
+  $('nameQuery').addEventListener('input', highlight);
+
+  $('xlsxBtn').onclick = () => {
+    if (!current || !window.XLSX) return;
+    const aoa = [headers].concat(current.rows);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const thin = { style: 'thin', color: { rgb: '000000' } };
+    const border = { top: thin, bottom: thin, left: thin, right: thin };
+    const align = { horizontal: 'center', vertical: 'center', wrapText: true };
+    aoa.forEach((row, r) => {
+      for (let c = 0; c < headers.length; c++) {
+        const ref = XLSX.utils.encode_cell({ r, c });
+        if (!ws[ref]) ws[ref] = { t: 's', v: '' };
+        ws[ref].s = { border, alignment: align, font: { name: '맑은 고딕', sz: r === 0 ? 16 : 14, bold: r === 0 } };
+      }
+    });
+    ws['!merges'] = [];
+    current.rows.forEach((row, i) => { if (isUnion(row)) ws['!merges'].push({ s: { r: i + 1, c: 1 }, e: { r: i + 1, c: headers.length - 1 } }); });
+    ws['!cols'] = headers.map(() => ({ wch: 20 }));
+    ws['!rows'] = aoa.map((row, r) => ({ hpt: r > 0 && !isUnion(row) ? 48 : 28 }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, current.month);
+    XLSX.writeFile(wb, `주일미사_봉사자_${current.month}.xlsx`);
+  };
+
+  // ───── 새로 만들기 (관리자) ─────
+  async function generate(force) {
+    show('confirm', false);
+    $('genBtn').disabled = true; $('overwriteBtn').disabled = true;
+    setMsg('genMsg', '배정하는 중…');
+    try {
+      const res = await api('generate', { month: $('monthGen').value, force });
+      if (res.exists) {
+        setMsg('genMsg', '');
+        $('confirmText').textContent = `${monthLabel(res.month)} 배정표가 이미 있습니다. 직접 수정한 내용이 있다면 덮어쓰면 사라집니다.`;
+        show('confirm', true);
+        return;
+      }
+      setMsg('genMsg', '저장했습니다.');
+      if (months.indexOf(res.month) < 0) fillMonths(months.concat(res.month).sort().reverse(), res.month);
+      else $('monthView').value = res.month;
+      render(res);
+      selectTab('view');
+    } catch (e) {
+      setMsg('genMsg', e.message, true);
+    } finally {
+      $('genBtn').disabled = false; $('overwriteBtn').disabled = false;
+    }
+  }
+  $('genBtn').onclick = () => generate(false);
+  $('overwriteBtn').onclick = () => generate(true);
+  $('cancelBtn').onclick = () => show('confirm', false);
+
+  // ───── 접근 관리 (관리자) ─────
+  async function refreshAccess() {
+    try { renderAccess((await api('requests')).list); }
+    catch (e) { $('accessList').textContent = e.message; }
+  }
+  $('accessReload').onclick = refreshAccess;
+
+  function renderAccess(list) {
+    const box = $('accessList');
+    box.innerHTML = '';
+    const groups = [
+      { status: '대기', title: '승인 대기', actions: [['approve', '승인', true], ['reject', '반려']] },
+      { status: '승인', title: '승인됨', actions: [['reject', '해제']] },
+      { status: '반려', title: '반려·해제됨', actions: [['approve', '승인']] },
+    ];
+    const pending = list.filter(x => x.status === '대기').length;
+    $('pendingBadge').textContent = pending ? `(${pending})` : '';
+    groups.forEach(g => {
+      const items = list.filter(x => x.status === g.status);
+      const sec = document.createElement('div'); sec.className = 'group';
+      const h = document.createElement('h3'); h.textContent = `${g.title} ${items.length}`; sec.appendChild(h);
+      if (!items.length) { const p = document.createElement('p'); p.className = 'muted'; p.style.margin = '0'; p.textContent = '없음'; sec.appendChild(p); }
+      items.forEach(x => {
+        const row = document.createElement('div'); row.className = 'req';
+        const info = document.createElement('div'); info.className = 'info';
+        const nm = document.createElement('div'); nm.textContent = x.name || '(이름 없음)';
+        const sm = document.createElement('small'); sm.textContent = `${x.email} · 요청 ${x.requestedAt}${x.decidedAt ? ' · 처리 ' + x.decidedAt : ''}`;
+        info.append(nm, sm);
+        const acts = document.createElement('div'); acts.className = 'actions';
+        g.actions.forEach(([decision, label, primary]) => {
+          const b = document.createElement('button');
+          b.className = 'btn small' + (primary ? ' primary' : '');
+          b.textContent = label;
+          b.onclick = async () => {
+            acts.querySelectorAll('button').forEach(x => (x.disabled = true));
+            try { renderAccess((await api('decide', { email: x.email, decision })).list); }
+            catch (e) { alert(e.message); acts.querySelectorAll('button').forEach(x => (x.disabled = false)); }
+          };
+          acts.appendChild(b);
+        });
+        row.append(info, acts);
+        sec.appendChild(row);
+      });
+      box.appendChild(sec);
+    });
+  }
+
+  // ───── 시작 ─────
+  window.addEventListener('load', () => {
     google.accounts.id.initialize({
       client_id: CLIENT_ID,
       callback: onCredential,
-      auto_select: true,              // 이전에 고른 계정이면 자동 로그인 → 승인 계정은 바로 이동
+      auto_select: true,           // 이전에 고른 계정이면 자동 입장
       use_fedcm_for_prompt: true,
     });
-    google.accounts.id.renderButton($('gbtn'), { theme: 'outline', size: 'large', text: 'continue_with', locale: 'ko', width: 260 });
+    renderGoogleButton();
     google.accounts.id.prompt();
-  };
+    dark.addEventListener('change', () => { if (!token) renderGoogleButton(); });
+  });
 </script>
 </body>
 </html>
