@@ -10,36 +10,16 @@
 flowchart TB
     U(["👤 사용자 (브라우저)"])
     G{{"🔑 Google 로그인"}}
-
-    subgraph L["① 랜딩 페이지 — GitHub Pages · 이 저장소"]
-        direction LR
-        L1["index.html<br/>보기 · 검색 · 엑셀"]
-        L2["관리자 화면<br/>생성 · 통계 · 접근 관리"]
-        L3["privacy.html<br/>개인정보처리방침"]
-    end
-
-    subgraph S["② 배정 서버 — Google Apps Script · 비공개 저장소"]
-        direction LR
-        S1["Api.gs<br/>요청 창구 · 토큰 확인<br/>역할 판정 · 접근 요청"]
-        S2["Code.gs<br/>배정 알고리즘<br/>시트 읽기/쓰기 · 통계"]
-        S1 --> S2
-    end
-
+    L["<b>① 랜딩 페이지</b><br/>GitHub Pages · 이 저장소<br/><br/>index.html — 보기 · 검색 · 엑셀<br/>관리자 — 생성 · 통계 · 접근 관리<br/>privacy.html — 개인정보처리방침"]
+    S["<b>② 배정 서버</b><br/>Google Apps Script · 비공개 저장소<br/><br/>Api.gs — 요청 창구 · 토큰 확인 · 역할 판정<br/>Code.gs — 배정 알고리즘 · 시트 읽기/쓰기 · 통계"]
     M["✉️ 메일<br/>관리자 · 요청자"]
-
-    subgraph D["③ Google 스프레드시트 — 비공개"]
-        direction LR
-        D1[("명단")]
-        D2[("월별 배정표<br/>YYYY-MM")]
-        D3[("접근관리")]
-        D4[("배정통계")]
-    end
+    D[("<b>③ Google 스프레드시트</b> · 비공개<br/><br/>명단 · 월별 배정표(YYYY-MM)<br/>접근관리 · 배정통계")]
 
     U --> L
     G -. ID 토큰 .-> L
-    L == "POST {action, token} ⇄ JSON" ==> S
-    S1 --> M
-    S <--> D
+    L == "POST {action, token}<br/>⇅ JSON 결과" ==> S
+    S -- 승인 요청 · 결과 --> M
+    S <== 읽기 · 쓰기 ==> D
 ```
 
 ### 요청 흐름
