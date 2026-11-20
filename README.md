@@ -7,41 +7,39 @@
 ## 구조
 
 ```mermaid
-flowchart LR
-    U(["👤 사용자<br/>브라우저"])
+flowchart TB
+    U(["👤 사용자 (브라우저)"])
+    G{{"🔑 Google 로그인"}}
 
-    subgraph L["① 랜딩 페이지 · GitHub Pages (이 저장소)"]
-        direction TB
-        L1["index.html<br/>로그인 · 배정표 보기 · 검색 · 엑셀"]
-        L2["관리자 화면<br/>새로 만들기 · 통계 · 접근 관리"]
+    subgraph L["① 랜딩 페이지 — GitHub Pages · 이 저장소"]
+        direction LR
+        L1["index.html<br/>보기 · 검색 · 엑셀"]
+        L2["관리자 화면<br/>생성 · 통계 · 접근 관리"]
         L3["privacy.html<br/>개인정보처리방침"]
     end
 
-    G{{"🔑 Google 로그인<br/>ID 토큰"}}
-
-    subgraph S["② 배정 서버 · Google Apps Script (비공개 저장소)"]
-        direction TB
-        S1["Api.gs<br/>doPost · 토큰 확인 · 역할 판정<br/>접근 요청 · 승인 · 메일"]
-        S2["Code.gs<br/>배정 알고리즘 · 시트 읽기/쓰기 · 통계"]
+    subgraph S["② 배정 서버 — Google Apps Script · 비공개 저장소"]
+        direction LR
+        S1["Api.gs<br/>요청 창구 · 토큰 확인<br/>역할 판정 · 접근 요청"]
+        S2["Code.gs<br/>배정 알고리즘<br/>시트 읽기/쓰기 · 통계"]
         S1 --> S2
     end
 
-    subgraph D["③ Google 스프레드시트 (비공개)"]
-        direction TB
+    M["✉️ 메일<br/>관리자 · 요청자"]
+
+    subgraph D["③ Google 스프레드시트 — 비공개"]
+        direction LR
         D1[("명단")]
         D2[("월별 배정표<br/>YYYY-MM")]
         D3[("접근관리")]
         D4[("배정통계")]
     end
 
-    M["✉️ 메일<br/>관리자 · 요청자"]
-
     U --> L
-    L <-. 로그인 .-> G
-    L -- "POST {action, token}" --> S1
-    S1 -- "JSON 결과" --> L
-    S2 <--> D
+    G -. ID 토큰 .-> L
+    L == "POST {action, token} ⇄ JSON" ==> S
     S1 --> M
+    S <--> D
 ```
 
 ### 요청 흐름
