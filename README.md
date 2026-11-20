@@ -6,22 +6,83 @@
 
 ## 구조
 
+```mermaid
+flowchart LR
+    U(["👤 사용자<br/>브라우저"])
+
+    subgraph L["① 랜딩 페이지 · GitHub Pages (이 저장소)"]
+        direction TB
+        L1["index.html<br/>로그인 · 배정표 보기 · 검색 · 엑셀"]
+        L2["관리자 화면<br/>새로 만들기 · 통계 · 접근 관리"]
+        L3["privacy.html<br/>개인정보처리방침"]
+    end
+
+    G{{"🔑 Google 로그인<br/>ID 토큰"}}
+
+    subgraph S["② 배정 서버 · Google Apps Script (비공개 저장소)"]
+        direction TB
+        S1["Api.gs<br/>doPost · 토큰 확인 · 역할 판정<br/>접근 요청 · 승인 · 메일"]
+        S2["Code.gs<br/>배정 알고리즘 · 시트 읽기/쓰기 · 통계"]
+        S1 --> S2
+    end
+
+    subgraph D["③ Google 스프레드시트 (비공개)"]
+        direction TB
+        D1[("명단")]
+        D2[("월별 배정표<br/>YYYY-MM")]
+        D3[("접근관리")]
+        D4[("배정통계")]
+    end
+
+    M["✉️ 메일<br/>관리자 · 요청자"]
+
+    U --> L
+    L <-. 로그인 .-> G
+    L -- "POST {action, token}" --> S1
+    S1 -- "JSON 결과" --> L
+    S2 <--> D
+    S1 --> M
 ```
-┌────────────────────────────┐        ┌──────────────────────────────────────┐
-│  랜딩 페이지 (이 저장소)      │  POST  │  Google Apps Script (배정 서버)         │
-│  GitHub Pages · index.html │ ─────▶ │  Code.gs  배정 알고리즘·시트 읽기/쓰기·통계 │
-│                            │  JSON  │  Api.gs   랜딩용 API (doPost)           │
-│  - Google 로그인 (GIS)      │ ◀───── │  ※ 코드: 별도 비공개 저장소, clasp로 배포   │
-│  - 배정표 보기·검색·엑셀     │        └───────────────┬──────────────────────┘
-│  - 관리자: 생성·통계·접근 관리 │                        │ SpreadsheetApp
-└────────────────────────────┘                        ▼
-                                       ┌──────────────────────────────────────┐
-                                       │  Google 스프레드시트                    │
-                                       │  - 명단 시트 (이름·학년·세례명·역할)      │
-                                       │  - 월별 배정표 시트 (YYYY-MM)            │
-                                       │  - 접근관리 시트 (이메일·이름·상태)        │
-                                       │  - 배정통계 시트 (최근 6개월 횟수)        │
-                                       └──────────────────────────────────────┘
+
+### 요청 흐름
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor 사용자
+    participant 랜딩 as 랜딩 페이지
+    participant 구글 as Google 로그인
+    participant 서버 as Apps Script
+    participant 시트 as 스프레드시트
+
+    사용자->>랜딩: 접속
+    랜딩->>구글: 계정 선택
+    구글-->>랜딩: ID 토큰
+    랜딩->>서버: me / init (토큰)
+    서버->>구글: tokeninfo로 토큰 확인
+    서버->>시트: 접근관리 시트에서 역할 확인
+    서버-->>랜딩: 역할(admin · approved · pending …)
+
+    alt 승인된 사용자 · 관리자
+        랜딩->>서버: month (YYYY-MM)
+        서버->>시트: 그 달 시트 읽기
+        서버-->>랜딩: 배정표 → 화면에 표시
+    else 권한 없음
+        랜딩->>서버: request (이름)
+        서버->>시트: 접근관리에 "대기" 기록
+        서버-->>사용자: 관리자에게 승인 메일 → 결과 메일
+    end
+```
+
+### 배정표 만들기 (관리자)
+
+```mermaid
+flowchart LR
+    A["명단 시트"] --> C
+    B["최근 6개월<br/>월별 배정표"] --> C
+    C["무작위 배정 400회<br/>규칙 검사"] --> E["가장 고른 결과 선택"]
+    E --> F["새 YYYY-MM 시트 작성"]
+    E --> H["배정통계 시트 갱신"]
 ```
 
 | 구성 요소 | 위치 | 역할 |
