@@ -7,6 +7,7 @@
 ## 구조
 
 ```mermaid
+%%{init: {"flowchart": {"wrappingWidth": 600}}}%%
 flowchart TB
     U(["👤 사용자 (브라우저)"])
     G{{"🔑 Google 로그인"}}
@@ -55,6 +56,7 @@ sequenceDiagram
 ### 배정표 만들기 (관리자)
 
 ```mermaid
+%%{init: {"flowchart": {"wrappingWidth": 600}}}%%
 flowchart LR
     A["명단 시트"] --> C
     B["최근 6개월<br/>월별 배정표"] --> C
