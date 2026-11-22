@@ -46,17 +46,20 @@
       --hit: #ffe066; --union: #eaeaea; --error: #d63031; --warn: #a15c00;
       --title-font: 'DNFBitBitv2', 'NeoDunggeunmo', 'Malgun Gothic', sans-serif;
       --body-font: 'NeoDunggeunmo', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+      --title-fill: #ffffff; --title-stroke: #323232;
     }
     /* 테마: 시스템(기본값, OS 설정 따라감) / 기본(라이트) / 다크 — html[data-theme] */
     @media (prefers-color-scheme: dark) {
       :root:not([data-theme="light"]) {
         --bg: #16161a; --surface: #222228; --card: #2e2e35; --ink: #e4e4e7; --sub: #a1a1aa;
         --accent: var(--lit-dark, #4fd18a); --on-accent: var(--lit-on-dark, #0b0b0e); --hit: #6b5714; --union: #2a2a30; --error: #ff6b6b; --warn: #f0b45a;
+        --title-fill: #16161a; --title-stroke: #ffffff;
       }
     }
     :root[data-theme="dark"] {
       --bg: #16161a; --surface: #222228; --card: #2e2e35; --ink: #e4e4e7; --sub: #a1a1aa;
       --accent: var(--lit-dark, #4fd18a); --on-accent: var(--lit-on-dark, #0b0b0e); --hit: #6b5714; --union: #2a2a30; --error: #ff6b6b; --warn: #f0b45a;
+      --title-fill: #16161a; --title-stroke: #ffffff;
     }
     :root[data-theme="light"] { color-scheme: light; }
     :root[data-theme="dark"] { color-scheme: dark; }
@@ -83,7 +86,7 @@
     main { max-width: 900px; margin: 0 auto; padding: 40px 16px 56px; display: flex; flex-direction: column; align-items: center; }
     h1, h2, h3 { font-family: var(--title-font); font-weight: 400; margin: 0; }
     .title { font-size: clamp(26px, 7vw, 36px); text-align: center; line-height: 1.3;
-      color: #ffffff; -webkit-text-stroke: 2px #323232; paint-order: stroke fill; text-shadow: 3px 3px 0 var(--accent); }
+      color: var(--title-fill); -webkit-text-stroke: 2px var(--title-stroke); paint-order: stroke fill; text-shadow: 3px 3px 0 var(--accent); }
     .sub { margin: 8px 0 28px; color: var(--sub); text-align: center; }
 
     /* 공통 박스 */
